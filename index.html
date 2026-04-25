@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FitPlan">
+  <meta name="theme-color" content="#0a0a12">
+  <title>FitPlan — Diet & Gym Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="ambient-bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+  <header class="hdr">
+    <div><h1 class="logo">FitPlan</h1><p class="hdr-date" id="hdrDate"></p></div>
+    <div class="streak-badge"><span>🔥</span><span class="streak-num" id="streakNum">0</span></div>
+  </header>
+
+  <main class="main" id="main">
+
+    <!-- ===== DIET TAB ===== -->
+    <section class="tab active" id="dietTab">
+      <!-- Water Tracker -->
+      <div class="glass water-section">
+        <div class="water-row">
+          <span class="water-icon">💧</span>
+          <div class="water-mid">
+            <div class="water-drops" id="waterDrops"></div>
+            <div class="water-bar"><div class="water-fill" id="waterFill"></div></div>
+          </div>
+          <span class="water-count" id="waterCount">0/4L</span>
+        </div>
+      </div>
+      <!-- Macros -->
+      <div class="glass macro-section">
+        <h2 class="slabel-sm">DAILY MACROS</h2>
+        <div class="rings" id="rings">
+          <div class="ring-box"><svg viewBox="0 0 100 100"><circle class="rbg" cx="50" cy="50" r="42"/><circle class="rp protein-r" cx="50" cy="50" r="42" id="pRing"/></svg><div class="rlbl"><b id="pVal">0</b><small>/ 170g</small></div><span class="rname">Protein</span></div>
+          <div class="ring-box"><svg viewBox="0 0 100 100"><circle class="rbg" cx="50" cy="50" r="42"/><circle class="rp carbs-r" cx="50" cy="50" r="42" id="cRing"/></svg><div class="rlbl"><b id="cVal">0</b><small>/ 270g</small></div><span class="rname">Carbs</span></div>
+          <div class="ring-box"><svg viewBox="0 0 100 100"><circle class="rbg" cx="50" cy="50" r="42"/><circle class="rp fat-r" cx="50" cy="50" r="42" id="fRing"/></svg><div class="rlbl"><b id="fVal">0</b><small>/ 75g</small></div><span class="rname">Fat</span></div>
+        </div>
+        <div class="cal-row"><span class="cal-now" id="calNow">0</span><span class="cal-of">/ 2450 kcal</span></div>
+        <div class="cal-bar"><div class="cal-fill" id="calFill"></div></div>
+      </div>
+      <!-- Meals -->
+      <div class="shdr"><h2 class="slabel">Today's Meals</h2><span class="ssub">Tap to expand</span></div>
+      <div id="mealsList"></div>
+      <!-- Supplements -->
+      <div class="shdr"><h2 class="slabel">Supplements</h2></div>
+      <div class="glass" id="suppList"></div>
+      <!-- Rules -->
+      <div class="shdr"><h2 class="slabel">Golden Rules</h2></div>
+      <div class="glass" id="rulesList"></div>
+    </section>
+
+    <!-- ===== GYM TAB ===== -->
+    <section class="tab" id="gymTab">
+      <div class="day-sel" id="daySel"></div>
+      <div class="glass workout-hdr" id="workoutHdr"></div>
+      <div class="shdr" id="warmupHdr"><h2 class="slabel">Warm-Up</h2><span class="ssub">10 min</span></div>
+      <div class="glass" id="warmupList"></div>
+      <div class="shdr"><h2 class="slabel">Exercises</h2><span class="ssub" id="exCount"></span></div>
+      <div id="exList"></div>
+      <div id="extraGym"></div>
+    </section>
+
+    <!-- ===== PROGRESS TAB ===== -->
+    <section class="tab" id="progressTab">
+      <!-- Transformation Photos -->
+      <div class="shdr"><h2 class="slabel">Transformation</h2>
+        <button class="btn-add" onclick="openPhotoModal()">+ Add Photo</button>
+      </div>
+      <div class="photo-grid" id="photoGrid"></div>
+      <!-- Weight Log -->
+      <div class="shdr"><h2 class="slabel">Weight Log</h2>
+        <button class="btn-add" onclick="openWeightModal()">+ Log</button>
+      </div>
+      <div class="glass" id="weightChart"></div>
+      <div id="weightHistory"></div>
+      <!-- Analytics -->
+      <div class="shdr"><h2 class="slabel">Analytics</h2></div>
+      <div class="analytics-grid" id="analytics"></div>
+    </section>
+
+    <!-- ===== TRACK TAB ===== -->
+    <section class="tab" id="trackTab">
+      <div class="glass stats-ov">
+        <h2 class="slabel">Your Stats</h2>
+        <div class="stats-grid">
+          <div class="st-item"><b>85.4<small>kg</small></b><span>Weight</span></div>
+          <div class="st-item"><b>20.8<small>%</small></b><span>Body Fat</span></div>
+          <div class="st-item"><b>64.2<small>kg</small></b><span>Muscle</span></div>
+          <div class="st-item"><b>182<small>cm</small></b><span>Height</span></div>
+        </div>
+        <div class="target-row">🎯 <span>80-82 kg · 15% BF · Lean Athletic Build</span></div>
+      </div>
+      <div class="shdr"><h2 class="slabel">Daily Checklist</h2><span class="ssub" id="ckProg">0/9</span></div>
+      <div id="ckList"></div>
+      <div class="shdr"><h2 class="slabel">Lookmax Tips</h2></div>
+      <div class="glass" id="lmList"></div>
+      <div class="shdr"><h2 class="slabel">Weekly Grocery</h2></div>
+      <div class="glass" id="grList"></div>
+    </section>
+  </main>
+
+  <!-- Tab Bar -->
+  <nav class="tabbar">
+    <button class="tb active" data-tab="dietTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg><span>Diet</span></button>
+    <button class="tb" data-tab="gymTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.5 6.5h11M6.5 17.5h11M3 10.5h3.5v3H3zM17.5 10.5H21v3h-3.5zM6.5 6.5v11M17.5 6.5v11M6.5 12h11"/></svg><span>Gym</span></button>
+    <button class="tb" data-tab="progressTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6"/></svg><span>Progress</span></button>
+    <button class="tb" data-tab="trackTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>Track</span></button>
+  </nav>
+
+  <!-- MODALS -->
+  <!-- Photo Modal -->
+  <div class="modal-overlay" id="photoModal">
+    <div class="modal glass">
+      <div class="modal-hdr"><h3>Add Photo</h3><button onclick="closeModal('photoModal')">✕</button></div>
+      <div class="modal-body">
+        <label class="file-label" id="photoLabel">
+          <span>📸 Tap to choose photo</span>
+          <input type="file" accept="image/*" id="photoInput" onchange="handlePhoto(this)">
+        </label>
+        <button class="btn-camera" onclick="openCamera()">📷 Take Photo</button>
+        <input type="file" accept="image/*" capture="environment" id="cameraInput" style="display:none" onchange="handlePhoto(this)">
+        <img id="photoPreview" class="photo-preview" style="display:none">
+        <label class="field-label">Date
+          <input type="date" id="photoDate" class="field-input">
+        </label>
+        <button class="btn-primary" onclick="savePhoto()" id="savePhotoBtn" disabled>Save Photo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weight Modal -->
+  <div class="modal-overlay" id="weightModal">
+    <div class="modal glass">
+      <div class="modal-hdr"><h3>Log Weight</h3><button onclick="closeModal('weightModal')">✕</button></div>
+      <div class="modal-body">
+        <label class="field-label">Weight (kg)
+          <input type="number" step="0.1" id="weightInput" class="field-input" placeholder="e.g. 84.5">
+        </label>
+        <label class="field-label">Date
+          <input type="date" id="weightDate" class="field-input">
+        </label>
+        <button class="btn-primary" onclick="saveWeight()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo Viewer -->
+  <div class="modal-overlay" id="photoViewer">
+    <div class="modal glass photo-view-modal">
+      <div class="modal-hdr"><h3 id="pvDate"></h3><button onclick="closeModal('photoViewer')">✕</button></div>
+      <img id="pvImg" class="pv-img">
+      <div class="pv-actions">
+        <button class="btn-outline" onclick="replacePhoto()">Replace</button>
+        <button class="btn-danger" onclick="deletePhoto()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gym Log Modal -->
+  <div class="modal-overlay" id="gymLogModal">
+    <div class="modal glass">
+      <div class="modal-hdr"><h3 id="glName"></h3><button onclick="closeModal('gymLogModal')">✕</button></div>
+      <div class="modal-body">
+        <div id="glSets"></div>
+        <button class="btn-sm" onclick="addSetRow()">+ Add Set</button>
+        <button class="btn-primary" style="margin-top:12px" onclick="saveGymLog()">Save</button>
+        <div class="shdr" style="padding-top:14px"><h2 class="slabel" style="font-size:14px">History</h2></div>
+        <div id="glHistory"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
