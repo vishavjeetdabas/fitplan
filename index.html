@@ -11,10 +11,28 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
   <div class="ambient-bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+  <!-- AUTH SCREEN -->
+  <div class="auth-screen show" id="authScreen">
+    <div class="auth-card glass">
+      <h1 class="logo" style="text-align:center;font-size:32px;margin-bottom:4px">FitPlan</h1>
+      <p style="text-align:center;color:var(--t2);font-size:13px;margin-bottom:24px">Your diet & gym companion</p>
+      <label class="field-label">Email
+        <input type="email" id="authEmail" class="field-input" placeholder="you@email.com">
+      </label>
+      <label class="field-label">Password
+        <input type="password" id="authPass" class="field-input" placeholder="Min 6 characters">
+      </label>
+      <div class="auth-error" id="authError"></div>
+      <button class="btn-primary" id="loginBtn" onclick="authLogin()">Log In</button>
+      <button class="btn-camera" id="signupBtn" onclick="authSignUp()" style="margin-top:4px">Create Account</button>
+    </div>
+  </div>
 
   <header class="hdr">
     <div><h1 class="logo">FitPlan</h1><p class="hdr-date" id="hdrDate"></p></div>
@@ -105,6 +123,14 @@
       <div class="glass" id="lmList"></div>
       <div class="shdr"><h2 class="slabel">Weekly Grocery</h2></div>
       <div class="glass" id="grList"></div>
+      <!-- Profile -->
+      <div class="shdr profileEl" style="display:none"><h2 class="slabel">Account</h2></div>
+      <div class="glass profileEl" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:14px;font-weight:600" id="userEmail"></div><div style="font-size:11px;color:var(--t2);margin-top:2px">Cloud backup active ☁️</div></div>
+          <button class="btn-danger" style="padding:8px 16px" onclick="authLogout()">Log Out</button>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -180,6 +206,7 @@
   </div>
 </div>
 <script src="data.js"></script>
+<script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

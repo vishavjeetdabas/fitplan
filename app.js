@@ -2,7 +2,7 @@
 const today=new Date(),di=(today.getDay()+6)%7,dkey=`fp_${today.toISOString().slice(0,10)}`;
 function LS(k,v){if(v!==undefined)localStorage.setItem(k,JSON.stringify(v));else try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 let S=LS(dkey)||{meals:{},ck:{},water:0};
-function save(){LS(dkey,S)}
+function save(){LS(dkey,S);syncToCloud()}
 
 // ===== PHOTO DB (IndexedDB) =====
 let pdb;
@@ -15,6 +15,7 @@ function dbDel(id){return new Promise(r=>{const t=pdb.transaction('photos','read
 document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('hdrDate').textContent=today.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
   await openDB();
+  initSupabase();
   renderAll();
   initTabs();
 });
@@ -163,6 +164,7 @@ window.saveGymLog=()=>{
   rows.forEach(r=>{const ins=r.querySelectorAll('input');const kg=parseFloat(ins[0].value),reps=parseInt(ins[1].value);if(kg&&reps)data.push({kg,reps})});
   if(!data.length)return;
   const logged=LS('gym_'+dkey)||{};logged[glDay+'_'+glIdx]=data;LS('gym_'+dkey,logged);
+  syncGymLogToCloud(glDay+'_'+glIdx,data);
   closeModal('gymLogModal');renderWorkout(curDay);
 };
 function renderGymHistory(d,i){
@@ -209,7 +211,9 @@ window.handlePhoto=el=>{
 };
 window.savePhoto=async()=>{
   if(!pendingPhoto)return;
-  await dbAdd({data:pendingPhoto,date:document.getElementById('photoDate').value});
+  const dt=document.getElementById('photoDate').value;
+  await dbAdd({data:pendingPhoto,date:dt});
+  uploadPhotoToCloud(pendingPhoto,dt);
   closeModal('photoModal');renderPhotos();
 };
 window.viewPhoto=async id=>{
@@ -236,6 +240,7 @@ window.saveWeight=()=>{
   const kg=parseFloat(document.getElementById('weightInput').value),dt=document.getElementById('weightDate').value;
   if(!kg||!dt)return;
   const w=getWeights();w.push({kg,date:dt});w.sort((a,b)=>new Date(a.date)-new Date(b.date));setWeights(w);
+  syncWeightToCloud(kg,dt);
   closeModal('weightModal');renderWeights();renderAnalytics();
 };
 function renderWeights(){
@@ -250,7 +255,7 @@ function renderWeights(){
   const hist=w.slice().reverse().slice(0,10);
   document.getElementById('weightHistory').innerHTML=hist.map(x=>`<div class="wt-entry"><span>${new Date(x.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span><b>${x.kg} kg</b><span class="wt-del" onclick="delWeight('${x.date}',${x.kg})">✕</span></div>`).join('');
 }
-window.delWeight=(dt,kg)=>{let w=getWeights();w=w.filter(x=>!(x.date===dt&&x.kg===kg));setWeights(w);renderWeights();renderAnalytics()};
+window.delWeight=(dt,kg)=>{let w=getWeights();w=w.filter(x=>!(x.date===dt&&x.kg===kg));setWeights(w);deleteWeightFromCloud(dt);renderWeights();renderAnalytics()};
 
 // ===== ANALYTICS =====
 function renderAnalytics(){
