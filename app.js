@@ -300,9 +300,22 @@ window.viewPhoto=async id=>{
   document.getElementById('photoViewer').classList.add('show');
 };
 window.deletePhoto=async()=>{
-  if(!viewingPhotoId)return;await dbDel(viewingPhotoId);closeModal('photoViewer');renderPhotos();
+  if(!viewingPhotoId)return;
+  // Delete from cloud if it has a cloudId
+  const photos=await dbAll();const p=photos.find(x=>x.id===viewingPhotoId);
+  if(p&&p.cloudId)deletePhotoFromCloud(p.cloudId,p.cloudPath||'');
+  // Also try to find & delete cloud record by date
+  if(p)deletePhotoByDate(p.date);
+  await dbDel(viewingPhotoId);closeModal('photoViewer');renderPhotos();
 };
-window.replacePhoto=()=>{closeModal('photoViewer');openPhotoModal()};
+window.replacePhoto=async()=>{
+  // Delete old photo from cloud first
+  const photos=await dbAll();const p=photos.find(x=>x.id===viewingPhotoId);
+  if(p&&p.cloudId)deletePhotoFromCloud(p.cloudId,p.cloudPath||'');
+  if(p)deletePhotoByDate(p.date);
+  await dbDel(viewingPhotoId);
+  closeModal('photoViewer');openPhotoModal();
+};
 
 // ===== WEIGHT LOG =====
 function getWeights(){return LS('weights')||[]}

@@ -15,7 +15,7 @@ function initSupabase(){
       document.querySelector('.tabbar').style.display='';
       document.getElementById('userEmail').textContent=session.user.email;
       document.querySelectorAll('.profileEl').forEach(e=>e.style.display='');
-      syncFromCloud();
+      syncFromCloud().then(()=>pushLocalToCloud());
     } else {
       currentUser=null;
       document.getElementById('authScreen').classList.add('show');
@@ -186,6 +186,82 @@ async function loadPhotosFromCloud(){
 
 async function deletePhotoFromCloud(photoId,storagePath){
   if(!currentUser)return;
-  await sb.storage.from('photos').remove([storagePath]);
+  if(storagePath)await sb.storage.from('photos').remove([storagePath]);
   await sb.from('fitplan_photos').delete().eq('id',photoId);
+}
+
+// Delete photo by date (fallback when cloudId not available)
+async function deletePhotoByDate(dateKey){
+  if(!currentUser)return;
+  const{data}=await sb.from('fitplan_photos').select('id,storage_path').eq('user_id',currentUser.id).eq('date_key',dateKey);
+  if(data&&data.length){
+    for(const p of data){
+      if(p.storage_path)await sb.storage.from('photos').remove([p.storage_path]);
+      await sb.from('fitplan_photos').delete().eq('id',p.id);
+    }
+  }
+}
+
+// ===== PUSH LOCAL DATA TO CLOUD =====
+// Ensures all local data gets backed up to cloud
+async function pushLocalToCloud(){
+  if(!currentUser)return;
+  try{
+    // 1. Push all local weights that aren't in cloud
+    const localW=LS('weights')||[];
+    if(localW.length){
+      const{data:cloudW}=await sb.from('fitplan_weights').select('date_key').eq('user_id',currentUser.id);
+      const cloudDates=new Set((cloudW||[]).map(w=>w.date_key));
+      for(const w of localW){
+        if(!cloudDates.has(w.date)){
+          await sb.from('fitplan_weights').upsert({
+            user_id:currentUser.id,date_key:w.date,kg:w.kg
+          },{onConflict:'user_id,date_key'});
+        }
+      }
+    }
+    // 2. Push all local gym logs
+    const gymKeys=Object.keys(localStorage).filter(k=>k.startsWith('gym_fp_'));
+    for(const gk of gymKeys){
+      const dateKey=gk.replace('gym_fp_','');
+      const logged=LS(gk);
+      if(!logged)continue;
+      // Check what's already in cloud for this date
+      const{data:cloudGL}=await sb.from('fitplan_gym_logs').select('exercise_key').eq('user_id',currentUser.id).eq('date_key',dateKey);
+      const cloudKeys=new Set((cloudGL||[]).map(g=>g.exercise_key));
+      for(const[exKey,sets] of Object.entries(logged)){
+        if(!cloudKeys.has(exKey)){
+          await sb.from('fitplan_gym_logs').upsert({
+            user_id:currentUser.id,date_key:dateKey,exercise_key:exKey,sets:sets,updated_at:new Date().toISOString()
+          },{onConflict:'user_id,date_key,exercise_key'});
+        }
+      }
+    }
+    // 3. Push all local daily data
+    const dayKeys=Object.keys(localStorage).filter(k=>k.startsWith('fp_')&&k!=='fp_streak'&&!k.startsWith('fp_settings'));
+    for(const dk of dayKeys){
+      const dateKey=dk.replace('fp_','');
+      const data=LS(dk);
+      if(!data||(!data.meals&&!data.ck&&!data.water))continue;
+      await sb.from('fitplan_days').upsert({
+        user_id:currentUser.id,date_key:dateKey,data:data,updated_at:new Date().toISOString()
+      },{onConflict:'user_id,date_key'});
+    }
+    // 4. Push local photos that aren't in cloud
+    const localPhotos=await dbAll();
+    const{data:cloudPhotos}=await sb.from('fitplan_photos').select('date_key').eq('user_id',currentUser.id);
+    const cloudPhotoDates=new Set((cloudPhotos||[]).map(p=>p.date_key));
+    for(const lp of localPhotos){
+      if(!cloudPhotoDates.has(lp.date)&&lp.data){
+        const path=await uploadPhotoToCloud(lp.data,lp.date);
+        if(path){
+          // Update local record with cloud reference
+          const t=pdb.transaction('photos','readwrite');
+          const store=t.objectStore('photos');
+          lp.cloudPath=path;
+          store.put(lp);
+        }
+      }
+    }
+  }catch(e){console.error('Push to cloud error:',e)}
 }
