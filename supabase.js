@@ -64,28 +64,79 @@ function setAuthLoading(on){
   document.getElementById('loginBtn').textContent=on?'Loading...':'Log In';
 }
 
-// ===== CLOUD SYNC =====
+// ===== CLOUD SYNC (Full Restore) =====
 async function syncFromCloud(){
   if(!currentUser)return;
-  // Sync today's daily data
-  const{data}=await sb.from('fitplan_days').select('data').eq('user_id',currentUser.id).eq('date_key',dkey.replace('fp_','')).maybeSingle();
-  if(data){
-    S=data.data;
-    if(!S.meals)S.meals={};
-    if(!S.ck)S.ck={};
-    if(!S.water)S.water=0;
-    save();
-  }
-  // Sync weights
-  const{data:wts}=await sb.from('fitplan_weights').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:true});
-  if(wts&&wts.length)LS('weights',wts.map(w=>({kg:parseFloat(w.kg),date:w.date_key})));
-  // Sync gym logs for today
-  const{data:gl}=await sb.from('fitplan_gym_logs').select('*').eq('user_id',currentUser.id).eq('date_key',dkey.replace('fp_',''));
-  if(gl&&gl.length){
-    const logged={};
-    gl.forEach(g=>logged[g.exercise_key]=g.sets);
-    LS('gym_'+dkey,logged);
-  }
+  try{
+    // 1. Restore ALL daily data (last 30 days)
+    const{data:allDays}=await sb.from('fitplan_days').select('date_key,data').eq('user_id',currentUser.id).order('date_key',{ascending:false}).limit(30);
+    if(allDays&&allDays.length){
+      allDays.forEach(d=>{
+        const k=`fp_${d.date_key}`;
+        // Only overwrite if cloud data is more complete
+        const local=LS(k);
+        if(!local||Object.keys(d.data.meals||{}).length>=Object.keys((local.meals)||{}).length){
+          LS(k,d.data);
+        }
+      });
+      // Update today's state
+      const todayCloud=allDays.find(d=>d.date_key===dkey.replace('fp_',''));
+      if(todayCloud){
+        S=todayCloud.data;
+        if(!S.meals)S.meals={};
+        if(!S.ck)S.ck={};
+        if(!S.water)S.water=0;
+        LS(dkey,S);
+      }
+    }
+    // 2. Restore ALL weights
+    const{data:wts}=await sb.from('fitplan_weights').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:true});
+    if(wts&&wts.length){
+      // Merge with local weights (keep unique dates)
+      const localW=LS('weights')||[];
+      const merged=new Map();
+      localW.forEach(w=>merged.set(w.date,w));
+      wts.forEach(w=>merged.set(w.date_key,{kg:parseFloat(w.kg),date:w.date_key}));
+      LS('weights',[...merged.values()].sort((a,b)=>new Date(a.date)-new Date(b.date)));
+    }
+    // 3. Restore ALL gym logs (grouped by date)
+    const{data:gl}=await sb.from('fitplan_gym_logs').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:false}).limit(200);
+    if(gl&&gl.length){
+      // Group by date_key
+      const byDate={};
+      gl.forEach(g=>{
+        const k='gym_fp_'+g.date_key;
+        if(!byDate[k])byDate[k]={};
+        byDate[k][g.exercise_key]=g.sets;
+      });
+      // Write each date's gym logs to localStorage
+      Object.entries(byDate).forEach(([k,v])=>{
+        const local=LS(k);
+        if(!local||Object.keys(v).length>=Object.keys(local).length){
+          LS(k,v);
+        }
+      });
+    }
+    // 4. Restore photos from cloud storage
+    const cloudPhotos=await loadPhotosFromCloud();
+    if(cloudPhotos.length){
+      const localPhotos=await dbAll();
+      const localDates=new Set(localPhotos.map(p=>p.date));
+      for(const cp of cloudPhotos){
+        if(!localDates.has(cp.date)){
+          try{
+            const resp=await fetch(cp.url);
+            if(resp.ok){
+              const blob=await resp.blob();
+              const reader=new FileReader();
+              const base64=await new Promise(r=>{reader.onload=e=>r(e.target.result);reader.readAsDataURL(blob)});
+              await dbAdd({data:base64,date:cp.date,cloudId:cp.id});
+            }
+          }catch(e){console.warn('Photo restore skipped:',e)}
+        }
+      }
+    }
+  }catch(e){console.error('Cloud sync error:',e)}
   renderAll();
 }
 
