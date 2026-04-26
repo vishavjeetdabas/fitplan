@@ -100,22 +100,15 @@ async function syncFromCloud(){
       LS('weights',[...merged.values()].sort((a,b)=>new Date(a.date)-new Date(b.date)));
     }
     // 3. Restore ALL gym logs (grouped by date)
-    const{data:gl,error:glErr}=await sb.from('fitplan_gym_logs').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:false}).limit(200);
-    console.log('[Sync] Gym logs from cloud:',gl?.length||0,'error:',glErr);
+    const{data:gl}=await sb.from('fitplan_gym_logs').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:false}).limit(200);
     if(gl&&gl.length){
-      // Group by date_key
       const byDate={};
       gl.forEach(g=>{
         const k='gym_fp_'+g.date_key;
         if(!byDate[k])byDate[k]={};
         byDate[k][g.exercise_key]=g.sets;
       });
-      console.log('[Sync] Gym log keys to write:',Object.keys(byDate));
-      // Write each date's gym logs to localStorage
-      Object.entries(byDate).forEach(([k,v])=>{
-        LS(k,v);
-        console.log('[Sync] Wrote gym_key:',k,'exercises:',Object.keys(v).length);
-      });
+      Object.entries(byDate).forEach(([k,v])=>LS(k,v));
     }
     // 4. Restore photos from cloud storage
     const cloudPhotos=await loadPhotosFromCloud();
