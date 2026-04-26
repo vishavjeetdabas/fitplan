@@ -167,12 +167,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .pg-date{position:absolute;bottom:0;left:0;right:0;padding:4px;text-align:center;font-size:9px;font-weight:600;color:#fff;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
 .pg-empty{display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--t3);cursor:pointer}
 
-/* Weight Chart */
-.wt-chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:20px;position:relative;margin-bottom:8px}
-.wt-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.wt-bar{width:100%;border-radius:6px 6px 0 0;background:linear-gradient(to top,var(--grn),var(--blu));transition:height .6s ease;min-height:4px}
-.wt-bar-label{font-size:8px;color:var(--t3);font-weight:600}
-.wt-bar-val{font-size:9px;color:var(--t2);font-weight:600;position:absolute;top:0}
+/* Weight entries */
 .wt-entry{background:var(--gl);border:1px solid var(--glb);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
 .wt-entry b{color:var(--grn)}
 .wt-del{font-size:12px;color:var(--red);cursor:pointer;padding:4px 8px}
@@ -250,13 +245,45 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .btn-danger{padding:10px 24px;background:var(--redd);border:none;color:var(--red);font-size:13px;font-weight:600;border-radius:10px;cursor:pointer}
 .btn-sm{padding:8px 16px;background:var(--gl);border:1px solid var(--glb);color:var(--t1);font-size:12px;font-weight:600;border-radius:8px;cursor:pointer}
 
-/* Gym Log Sets */
-.gl-set{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.gl-set span{font-size:12px;color:var(--t3);font-weight:600;width:40px}
-.gl-set input{flex:1;padding:10px;background:var(--glh);border:1px solid var(--glb);border-radius:8px;color:var(--t1);font-size:14px;font-family:inherit;outline:none;text-align:center}
-.gl-set input:focus{border-color:var(--grn)}
+/* Gym Log Sets (Advanced) */
+.gl-target{font-size:12px;color:var(--t3);margin-bottom:10px;font-weight:500}
+.gl-prev-banner{background:var(--blud);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:2px}
+.gl-prev-label{font-size:10px;color:var(--blu);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.gl-prev-data{font-size:13px;color:var(--t1);font-weight:500}
+.gl-timer-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.gl-timer-btn{padding:8px 14px;background:var(--gl);border:1px solid var(--glb);border-radius:10px;color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.gl-timer-btn.running{background:var(--grnd);border-color:var(--grn);color:var(--grn)}
+.gl-timer-display{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:1px;min-width:50px}
+.gl-set{display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:8px 10px;background:var(--gl);border:1px solid var(--glb);border-radius:12px;transition:all .2s}
+.gl-set.done{border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.05)}
+.gl-set-num{width:24px;height:24px;border-radius:8px;background:var(--glh);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t3);flex-shrink:0}
+.gl-set.done .gl-set-num{background:var(--grnd);color:var(--grn)}
+.gl-set-field{flex:1;display:flex;flex-direction:column;gap:1px}
+.gl-set-field label{font-size:8px;color:var(--t3);font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding-left:2px}
+.gl-set-field input{width:100%;padding:8px 6px;background:var(--glh);border:1px solid transparent;border-radius:8px;color:var(--t1);font-size:15px;font-family:inherit;outline:none;text-align:center;font-weight:600}
+.gl-set-field input:focus{border-color:var(--grn)}
+.gl-set-field input::placeholder{color:var(--t3);font-weight:400;font-size:13px}
+.gl-set-x{color:var(--t3);font-weight:600;font-size:14px;flex-shrink:0}
+.gl-set-check{width:32px;height:32px;border-radius:10px;border:2px solid rgba(255,255,255,.1);background:transparent;color:var(--t3);font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;font-weight:700}
+.gl-set-check.active{background:var(--grn);border-color:var(--grn);color:#000}
+.gl-set-actions{display:flex;gap:8px;margin-top:4px}
+.gl-set-actions .btn-sm{flex:1;text-align:center}
+.gl-vol-chart{background:var(--gl);border-radius:10px;padding:10px 14px;margin-bottom:10px}
+.gl-vol-label{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.gl-vol-bars{display:flex;align-items:flex-end;gap:6px;height:50px}
+.gl-vol-bars>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.gl-vol-bar{width:100%;border-radius:4px 4px 0 0;background:linear-gradient(to top,var(--pur),var(--blu));min-height:4px;transition:height .4s}
+.gl-vol-val{font-size:8px;color:var(--t3);font-weight:600}
 .gl-hist{font-size:12px;color:var(--t2);padding:6px 0;border-bottom:1px solid var(--glb)}
 .gl-hist b{color:var(--grn)}
+/* Exercise card improvements */
+.ex-logged-preview{font-size:11px;color:var(--grn);margin-top:4px;font-weight:500;opacity:.8}
+.ex-last-preview{font-size:11px;color:var(--t3);margin-top:4px;font-weight:500;font-style:italic}
+.ex-log-empty{font-size:10px;color:var(--blu);background:var(--blud);padding:4px 10px;border-radius:6px;flex-shrink:0;font-weight:600}
+/* Weight Line Graph */
+.wt-line-chart{position:relative;padding-top:4px}
+.wt-line-chart svg{width:100%;height:auto}
+.wt-change-badge{position:absolute;top:4px;right:4px;font-size:12px;font-weight:700;padding:3px 8px;background:var(--gl);border-radius:8px;z-index:1}
 
 ::-webkit-scrollbar{width:0}
 

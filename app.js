@@ -122,15 +122,22 @@ function renderWorkout(d){
   const logged=LS('gym_'+dkey)||{};
   el.innerHTML=w.ex.map((e,i)=>{
     const key=d+'_'+i,hasLog=logged[key];
+    // Get last session data for smart preview
+    let lastStr='';
+    for(let x=1;x<=14;x++){const dt=new Date(today);dt.setDate(dt.getDate()-x);const k='gym_'+`fp_${dt.toISOString().slice(0,10)}`;const l=LS(k);
+      if(l&&l[key]){lastStr=l[key].map(s=>s.kg+'kg×'+s.reps).join(', ');break}}
     return `<div class="exc" onclick="openGymLog(${d},${i})">
       <div class="exnum">${i+1}</div>
       <div class="exinfo"><div class="exname">${e.n}</div>
         <div class="exmeta"><div class="exs">Sets: <span>${e.s}</span></div><div class="exr">Rest: <span>${e.r}</span></div></div>
         ${e.nt?`<div class="exnote">${e.nt}</div>`:''}
-      </div>${hasLog?'<div class="ex-log-badge">Logged ✓</div>':''}
+        ${hasLog?`<div class="ex-logged-preview">${hasLog.map(s=>s.kg+'×'+s.reps).join(' · ')}</div>`
+          :lastStr?`<div class="ex-last-preview">Last: ${lastStr}</div>`:''}
+      </div>${hasLog?'<div class="ex-log-badge">✓</div>':'<div class="ex-log-empty">Log</div>'}
     </div>`}).join('');
-  ex.innerHTML='';
-  if(w.pos)ex.innerHTML=`<div class="shdr"><h2 class="slabel">Posture Correction</h2><span class="ssub">15 min</span></div>`+w.pos.map(p=>`<div class="pcard"><div class="ptitle">${p.n} · <span style="color:var(--grn)">${p.s}</span></div><div class="pwhy">↳ ${p.w}</div></div>`).join('');
+  // Posture correction — shown after EVERY workout day
+  ex.innerHTML=`<div class="shdr"><h2 class="slabel">Posture Correction</h2><span class="ssub">15 min</span></div>`
+    +POSTURE.map(p=>`<div class="pcard"><div class="ptitle">${p.n} · <span style="color:var(--grn)">${p.s}</span></div><div class="pwhy">↳ ${p.w}</div></div>`).join('');
   if(w.xn)ex.innerHTML+=`<div class="glass" style="text-align:center;margin-top:12px;padding:16px"><span style="font-size:15px;font-weight:600;color:var(--blu)">${w.xn}</span></div>`;
 }
 
@@ -138,26 +145,87 @@ function renderWarmup(){
   document.getElementById('warmupList').innerHTML=WARMUP.map(w=>`<div class="wui"><span>${w[0]}</span><span>${w[1]}</span></div>`).join('');
 }
 
-// ===== GYM LOG MODAL =====
-let glDay,glIdx;
+// ===== GYM LOG MODAL (Advanced) =====
+let glDay,glIdx,restTimer=null,restSec=0;
+function getLastSession(d,i){
+  const key=d+'_'+i;
+  for(let x=1;x<=30;x++){const dt=new Date(today);dt.setDate(dt.getDate()-x);const k='gym_'+`fp_${dt.toISOString().slice(0,10)}`;const l=LS(k);
+    if(l&&l[key])return{sets:l[key],date:dt.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}}
+  return null;
+}
 window.openGymLog=(d,i)=>{
   glDay=d;glIdx=i;const e=WK[d].ex[i];
   document.getElementById('glName').textContent=e.n;
+  document.getElementById('glTarget').textContent=`Target: ${e.s} · Rest: ${e.r}`;
   const sets=document.getElementById('glSets');
   const logged=LS('gym_'+dkey)||{};
   const existing=logged[d+'_'+i]||[];
-  const numSets=existing.length||parseInt(e.s)||3;
+  const last=getLastSession(d,i);
+  // Show last session banner
+  const prevEl=document.getElementById('glPrev');
+  if(last)prevEl.innerHTML=`<div class="gl-prev-banner"><span class="gl-prev-label">Last (${last.date})</span><span class="gl-prev-data">${last.sets.map(s=>s.kg+'kg × '+s.reps).join(' → ')}</span></div>`;
+  else prevEl.innerHTML='';
+  // Determine number of sets
+  const numSets=existing.length||(last?last.sets.length:parseInt(e.s)||3);
   sets.innerHTML='';
   for(let s=0;s<Math.max(numSets,1);s++){
     const v=existing[s]||{};
-    sets.innerHTML+=`<div class="gl-set"><span>Set ${s+1}</span><input type="number" placeholder="kg" value="${v.kg||''}"><span>×</span><input type="number" placeholder="reps" value="${v.reps||''}"></div>`;
+    // Smart defaults: use existing > last session > empty
+    const defKg=v.kg||(last&&last.sets[s]?last.sets[s].kg:'')||'';
+    const defReps=v.reps||(last&&last.sets[s]?last.sets[s].reps:'')||'';
+    const done=v.kg&&v.reps;
+    sets.innerHTML+=`<div class="gl-set${done?' done':''}" data-idx="${s}">
+      <div class="gl-set-num">${s+1}</div>
+      <div class="gl-set-field"><label>KG</label><input type="number" inputmode="decimal" placeholder="${last&&last.sets[s]?last.sets[s].kg:'-'}" value="${defKg}"></div>
+      <span class="gl-set-x">×</span>
+      <div class="gl-set-field"><label>REPS</label><input type="number" inputmode="numeric" placeholder="${last&&last.sets[s]?last.sets[s].reps:'-'}" value="${defReps}"></div>
+      <button class="gl-set-check${done?' active':''}" onclick="markSetDone(this,${s})">✓</button>
+    </div>`;
   }
+  // Reset rest timer
+  clearInterval(restTimer);restTimer=null;restSec=0;
+  document.getElementById('restTimerDisplay').textContent='';
+  document.getElementById('restTimerBtn').textContent='⏱ Start Rest';
+  document.getElementById('restTimerBtn').classList.remove('running');
   renderGymHistory(d,i);
   document.getElementById('gymLogModal').classList.add('show');
 };
+window.markSetDone=(btn,idx)=>{
+  const row=btn.closest('.gl-set');
+  const ins=row.querySelectorAll('input');
+  if(ins[0].value&&ins[1].value){
+    row.classList.toggle('done');btn.classList.toggle('active');
+    // Auto-start rest timer when set is marked done
+    if(row.classList.contains('done'))startRestTimer();
+  }
+};
 window.addSetRow=()=>{
   const sets=document.getElementById('glSets'),c=sets.children.length+1;
-  sets.innerHTML+=`<div class="gl-set"><span>Set ${c}</span><input type="number" placeholder="kg"><span>×</span><input type="number" placeholder="reps"></div>`;
+  const last=getLastSession(glDay,glIdx);
+  sets.innerHTML+=`<div class="gl-set" data-idx="${c-1}">
+    <div class="gl-set-num">${c}</div>
+    <div class="gl-set-field"><label>KG</label><input type="number" inputmode="decimal" placeholder="-"></div>
+    <span class="gl-set-x">×</span>
+    <div class="gl-set-field"><label>REPS</label><input type="number" inputmode="numeric" placeholder="-"></div>
+    <button class="gl-set-check" onclick="markSetDone(this,${c-1})">✓</button>
+  </div>`;
+};
+window.removeLastSet=()=>{
+  const sets=document.getElementById('glSets');
+  if(sets.children.length>1)sets.removeChild(sets.lastChild);
+};
+// Rest Timer
+function startRestTimer(){
+  clearInterval(restTimer);restSec=0;
+  const btn=document.getElementById('restTimerBtn'),disp=document.getElementById('restTimerDisplay');
+  btn.textContent='⏱ Running';btn.classList.add('running');
+  restTimer=setInterval(()=>{restSec++;const m=Math.floor(restSec/60),s=restSec%60;disp.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+    if(restSec>=180){disp.style.color='var(--red)'}else if(restSec>=90){disp.style.color='var(--org)'}else{disp.style.color='var(--grn)'}
+  },1000);
+}
+window.toggleRestTimer=()=>{
+  if(restTimer){clearInterval(restTimer);restTimer=null;document.getElementById('restTimerBtn').textContent='⏱ Start Rest';document.getElementById('restTimerBtn').classList.remove('running');document.getElementById('restTimerDisplay').textContent='';restSec=0}
+  else startRestTimer();
 };
 window.saveGymLog=()=>{
   const rows=document.querySelectorAll('#glSets .gl-set'),data=[];
@@ -165,14 +233,22 @@ window.saveGymLog=()=>{
   if(!data.length)return;
   const logged=LS('gym_'+dkey)||{};logged[glDay+'_'+glIdx]=data;LS('gym_'+dkey,logged);
   syncGymLogToCloud(glDay+'_'+glIdx,data);
+  clearInterval(restTimer);restTimer=null;
   closeModal('gymLogModal');renderWorkout(curDay);
 };
 function renderGymHistory(d,i){
   const h=document.getElementById('glHistory');
   const dates=[];
-  for(let x=1;x<=14;x++){const dt=new Date(today);dt.setDate(dt.getDate()-x);const k='gym_'+`fp_${dt.toISOString().slice(0,10)}`;const l=LS(k);
+  for(let x=1;x<=30;x++){const dt=new Date(today);dt.setDate(dt.getDate()-x);const k='gym_'+`fp_${dt.toISOString().slice(0,10)}`;const l=LS(k);
     if(l&&l[d+'_'+i])dates.push({date:dt.toLocaleDateString('en-IN',{day:'numeric',month:'short'}),sets:l[d+'_'+i]})}
-  h.innerHTML=dates.length?dates.map(d=>`<div class="gl-hist"><b>${d.date}</b> — ${d.sets.map(s=>s.kg+'kg × '+s.reps).join(', ')}</div>`).join(''):'<div style="font-size:12px;color:var(--t3);padding:8px 0">No history yet</div>';
+  // Volume trend
+  let volHtml='';
+  if(dates.length>=2){
+    const vols=dates.slice(0,5).reverse().map(d=>({label:d.date,vol:d.sets.reduce((a,s)=>a+s.kg*s.reps,0)}));
+    const maxVol=Math.max(...vols.map(v=>v.vol));
+    volHtml=`<div class="gl-vol-chart"><div class="gl-vol-label">Volume Trend</div><div class="gl-vol-bars">${vols.map(v=>`<div><div class="gl-vol-bar" style="height:${(v.vol/maxVol)*40}px"></div><div class="gl-vol-val">${(v.vol/1000).toFixed(1)}k</div></div>`).join('')}</div></div>`;
+  }
+  h.innerHTML=volHtml+(dates.length?dates.slice(0,5).map(d=>`<div class="gl-hist"><b>${d.date}</b> — ${d.sets.map(s=>s.kg+'kg × '+s.reps).join(', ')}</div>`).join(''):'<div style="font-size:12px;color:var(--t3);padding:8px 0">No history yet</div>');
 }
 
 // ===== PHOTOS =====
@@ -248,10 +324,44 @@ function renderWeights(){
   const chart=document.getElementById('weightChart');
   if(!last10.length){chart.innerHTML='<div style="text-align:center;color:var(--t3);font-size:13px;padding:20px">No weight data yet. Tap + Log to start.</div>';
     document.getElementById('weightHistory').innerHTML='';return;}
-  const min=Math.min(...last10.map(x=>x.kg))-1,max=Math.max(...last10.map(x=>x.kg))+1,range=max-min||1;
-  chart.innerHTML=`<div class="wt-chart">${last10.map(x=>{
-    const h=((x.kg-min)/range)*90+10;
-    return `<div class="wt-bar-wrap"><div class="wt-bar-val">${x.kg}</div><div class="wt-bar" style="height:${h}%"></div><div class="wt-bar-label">${new Date(x.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'}).replace(' ','\n')}</div></div>`}).join('')}</div>`;
+  // SVG Line Graph
+  const W=360,H=140,pad={t:25,r:15,b:30,l:40};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  const min=Math.min(...last10.map(x=>x.kg))-0.5,max=Math.max(...last10.map(x=>x.kg))+0.5,range=max-min||1;
+  const pts=last10.map((x,i)=>{
+    const px=pad.l+(i/(last10.length-1||1))*pw;
+    const py=pad.t+ph-((x.kg-min)/range)*ph;
+    return{x:px,y:py,kg:x.kg,date:new Date(x.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})};
+  });
+  const line=pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+  const area=line+` L${pts[pts.length-1].x.toFixed(1)},${pad.t+ph} L${pts[0].x.toFixed(1)},${pad.t+ph} Z`;
+  // Grid lines
+  const steps=4,gridLines=[];
+  for(let i=0;i<=steps;i++){
+    const v=min+(range/steps)*i;
+    const y=pad.t+ph-((v-min)/range)*ph;
+    gridLines.push(`<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${W-pad.r}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <text x="${pad.l-6}" y="${y.toFixed(1)}" fill="rgba(245,245,247,0.35)" font-size="9" text-anchor="end" dominant-baseline="middle" font-family="Inter">${v.toFixed(1)}</text>`);
+  }
+  // X labels
+  const xLabels=last10.length<=5?pts:pts.filter((_,i)=>i===0||i===pts.length-1||i===Math.floor(pts.length/2));
+  const xlHtml=xLabels.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-5}" fill="rgba(245,245,247,0.35)" font-size="8" text-anchor="middle" font-family="Inter">${p.date}</text>`).join('');
+  // Change indicator
+  const first=last10[0].kg,latest=last10[last10.length-1].kg,diff=(latest-first).toFixed(1);
+  const diffColor=diff<=0?'var(--grn)':'var(--red)';
+  const arrow=diff<=0?'↓':'↑';
+  chart.innerHTML=`<div class="wt-line-chart">
+    <div class="wt-change-badge" style="color:${diffColor}">${arrow} ${Math.abs(diff)}kg</div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--grn)" stop-opacity="0.3"/><stop offset="100%" stop-color="var(--grn)" stop-opacity="0"/></linearGradient></defs>
+      ${gridLines.join('')}
+      <path d="${area}" fill="url(#wg)"/>
+      <path d="${line}" fill="none" stroke="var(--grn)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="var(--bg)" stroke="var(--grn)" stroke-width="2"/>
+        <text x="${p.x.toFixed(1)}" y="${(p.y-10).toFixed(1)}" fill="var(--t2)" font-size="8" text-anchor="middle" font-family="Inter" font-weight="600">${p.kg}</text>`).join('')}
+      ${xlHtml}
+    </svg>
+  </div>`;
   const hist=w.slice().reverse().slice(0,10);
   document.getElementById('weightHistory').innerHTML=hist.map(x=>`<div class="wt-entry"><span>${new Date(x.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span><b>${x.kg} kg</b><span class="wt-del" onclick="delWeight('${x.date}',${x.kg})">✕</span></div>`).join('');
 }

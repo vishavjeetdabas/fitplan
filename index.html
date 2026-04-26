@@ -196,10 +196,19 @@
     <div class="modal glass">
       <div class="modal-hdr"><h3 id="glName"></h3><button onclick="closeModal('gymLogModal')">✕</button></div>
       <div class="modal-body">
+        <div class="gl-target" id="glTarget"></div>
+        <div id="glPrev"></div>
+        <div class="gl-timer-row">
+          <button class="gl-timer-btn" id="restTimerBtn" onclick="toggleRestTimer()">⏱ Start Rest</button>
+          <span class="gl-timer-display" id="restTimerDisplay"></span>
+        </div>
         <div id="glSets"></div>
-        <button class="btn-sm" onclick="addSetRow()">+ Add Set</button>
-        <button class="btn-primary" style="margin-top:12px" onclick="saveGymLog()">Save</button>
-        <div class="shdr" style="padding-top:14px"><h2 class="slabel" style="font-size:14px">History</h2></div>
+        <div class="gl-set-actions">
+          <button class="btn-sm" onclick="addSetRow()">+ Add Set</button>
+          <button class="btn-sm" onclick="removeLastSet()" style="color:var(--red)">− Remove</button>
+        </div>
+        <button class="btn-primary" style="margin-top:12px" onclick="saveGymLog()">Save Workout</button>
+        <div class="shdr" style="padding-top:14px"><h2 class="slabel" style="font-size:14px">History & Volume</h2></div>
         <div id="glHistory"></div>
       </div>
     </div>
