@@ -100,7 +100,8 @@ async function syncFromCloud(){
       LS('weights',[...merged.values()].sort((a,b)=>new Date(a.date)-new Date(b.date)));
     }
     // 3. Restore ALL gym logs (grouped by date)
-    const{data:gl}=await sb.from('fitplan_gym_logs').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:false}).limit(200);
+    const{data:gl,error:glErr}=await sb.from('fitplan_gym_logs').select('*').eq('user_id',currentUser.id).order('date_key',{ascending:false}).limit(200);
+    console.log('[Sync] Gym logs from cloud:',gl?.length||0,'error:',glErr);
     if(gl&&gl.length){
       // Group by date_key
       const byDate={};
@@ -109,12 +110,11 @@ async function syncFromCloud(){
         if(!byDate[k])byDate[k]={};
         byDate[k][g.exercise_key]=g.sets;
       });
+      console.log('[Sync] Gym log keys to write:',Object.keys(byDate));
       // Write each date's gym logs to localStorage
       Object.entries(byDate).forEach(([k,v])=>{
-        const local=LS(k);
-        if(!local||Object.keys(v).length>=Object.keys(local).length){
-          LS(k,v);
-        }
+        LS(k,v);
+        console.log('[Sync] Wrote gym_key:',k,'exercises:',Object.keys(v).length);
       });
     }
     // 4. Restore photos from cloud storage
